@@ -4,8 +4,6 @@ import { FormEvent, useEffect, useState } from 'react'
 import { ArrowRight, LockKeyhole, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-const logoUrl = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-ovGJwWZX2BJc2hCYBIeaMkjGv37AfJ.png'
-
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [sessionReady, setSessionReady] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
@@ -56,7 +54,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <section className="w-full max-w-[420px] rounded-[28px] border border-slate-200 bg-white p-7 shadow-xl shadow-slate-200/60 md:p-9">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-[24px] bg-white shadow-lg shadow-red-100 ring-1 ring-red-100">
-            <img src={logoUrl} alt="Drogaria Nordeste" className="size-16 rounded-[20px] object-cover" />
+            <img src="/drogaria-nordeste-mark.svg" alt="Drogaria Nordeste" className="size-16 rounded-[20px] object-cover" />
           </div>
           <p className="text-[11px] font-bold tracking-[0.16em] text-[#c92228]">DROGARIA</p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight">Nordeste</h1>

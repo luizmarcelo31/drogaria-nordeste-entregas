@@ -6,23 +6,22 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Drogaria Nordeste Entregas',
   description: 'Gestão de portaria e fluxo de entregadores da Drogaria Nordeste.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
+        url: '/drogaria-nordeste-mark.svg',
         media: '(prefers-color-scheme: light)',
       },
       {
-        url: '/icon-dark-32x32.png',
+        url: '/drogaria-nordeste-mark.svg',
         media: '(prefers-color-scheme: dark)',
       },
       {
-        url: '/icon.svg',
+        url: '/drogaria-nordeste-mark.svg',
         type: 'image/svg+xml',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/drogaria-nordeste-mark.svg',
   },
 }
 

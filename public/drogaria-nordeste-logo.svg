@@ -1,0 +1,11 @@
+<svg width="900" height="260" viewBox="0 0 900 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="16" y="16" width="228" height="228" rx="52" fill="#E30613"/>
+  <path d="M108 48C108 39.163 115.163 32 124 32H140C153.255 32 164 42.745 164 56V96H124C115.163 96 108 88.837 108 80V48Z" fill="#12BDB5"/>
+  <path d="M164 96H204V112C204 125.255 193.255 136 180 136H140V96H164Z" fill="#12BDB5"/>
+  <path d="M140 136H180V152C180 165.255 169.255 176 156 176H140V136Z" fill="#12BDB5"/>
+  <path d="M44 136H84V176C84 189.255 73.255 200 60 200H44V136Z" fill="#12BDB5"/>
+  <path d="M84 96H124V136H84C70.745 136 60 125.255 60 112V96H84Z" fill="#12BDB5"/>
+  <path d="M124 96H164V136H124C110.745 136 100 125.255 100 112V96H124Z" fill="#E30613"/>
+  <text x="286" y="91" fill="#E30613" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="5">DROGARIA</text>
+  <text x="280" y="177" fill="#E30613" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="800" letter-spacing="-2">Nordeste</text>
+</svg>
