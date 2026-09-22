@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownToLine, ArrowUpFromLine, Bell, Bike, BookOpen, ClipboardList, CircleHelp, FileWarning, History, LayoutDashboard, LogOut, Search, ShieldAlert, UsersRound, X } from 'lucide-react'
-import { formatDocumentOrPlate } from '@/lib/formatters'
+import { formatDocumentOrPlate, unitDateKey } from '@/lib/formatters'
 import { createClient } from '@/lib/supabase/client'
 import { findRider, listAccessEvents, listAlerts, listOccurrences, listRiders, registerAccess, type AccessEvent, type Alert, type Occurrence, type Rider } from '@/lib/supabase/queries'
 
@@ -32,8 +32,8 @@ export default function Page() {
       const [events, databaseAlerts, riders, occurrences] = await Promise.all([listAccessEvents(), listAlerts(), listRiders(), listOccurrences()])
       setAccessEvents(events)
       setRegisteredRiders(riders)
-      const today = new Date().toISOString().slice(0, 10)
-      const todayEvents = events.filter((event) => event.createdAt.slice(0, 10) === today)
+      const today = unitDateKey(new Date())
+      const todayEvents = events.filter((event) => unitDateKey(event.createdAt) === today)
       setStats({ entries: todayEvents.filter((event) => event.type === 'entrada' && event.status === 'registrado').length, exits: todayEvents.filter((event) => event.type === 'saida' && event.status === 'registrado').length, blocked: riders.filter((rider) => rider.status === 'bloqueado').length })
       setAlerts(databaseAlerts)
       setOccurrence(occurrences[0] ?? null)

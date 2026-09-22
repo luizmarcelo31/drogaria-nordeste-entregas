@@ -137,10 +137,11 @@ export async function listOccurrences() {
 
 export async function createOccurrence(input: { rider: string; plate: string; type: string; description: string; level: Occurrence['level'] }) {
   const rider = input.plate ? await findRider(input.plate) : await findRider(input.rider)
+  if (!rider) throw new Error('Entregador não encontrado. Selecione um cadastro válido antes de registrar a ocorrência.')
   const { data: user } = await createClient().auth.getUser()
   const { data: occurrence, error } = await createClient().from('ocorrencias').insert({
-    entregador_id: rider?.id ?? null,
-    placa: rider?.plate ?? (input.plate ? input.plate.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : null),
+    entregador_id: rider.id,
+    placa: rider.plate,
     tipo: input.type,
     descricao: input.description,
     nivel: input.level,

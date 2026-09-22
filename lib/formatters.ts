@@ -2,6 +2,18 @@ export function onlyDigits(value: string) {
   return value.replace(/\D/g, '')
 }
 
+export const UNIT_TIME_ZONE = 'America/Recife'
+
+export function unitDateKey(value: string | Date) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: UNIT_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value))
+}
+
+export function unitDateKeyOffset(days: number) {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return unitDateKey(date)
+}
+
 export function formatCpf(value: string) {
   const digits = onlyDigits(value).slice(0, 11)
   return digits

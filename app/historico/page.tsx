@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowDownToLine, ArrowLeft, ArrowUpFromLine, Clock3, Loader2, Search, ShieldAlert } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { listAccessEvents, type AccessEvent } from '@/lib/supabase/queries'
+import { unitDateKey, unitDateKeyOffset } from '@/lib/formatters'
 
 type Filter = 'todos' | 'entradas' | 'saidas' | 'bloqueios'
 type Period = 'hoje' | '7dias' | 'todos'
@@ -18,13 +19,15 @@ export default function HistoricoPage() {
   useEffect(() => { listAccessEvents().then(setEvents).catch(() => setError('Não foi possível carregar o histórico. Tente novamente.')).finally(() => setLoading(false)) }, [])
 
   const visible = useMemo(() => {
-    const now = new Date()
-    const start = period === 'hoje' ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() : period === '7dias' ? now.getTime() - 7 * 86400000 : 0
+    const today = unitDateKey(new Date())
+    const cutoff = period === '7dias' ? unitDateKeyOffset(-6) : today
     const normalized = search.toLowerCase().trim()
     return events.filter((event) => {
       const typeMatches = filter === 'todos' || (filter === 'entradas' && event.type === 'entrada' && event.status === 'registrado') || (filter === 'saidas' && event.type === 'saida') || (filter === 'bloqueios' && event.status === 'bloqueado')
       const textMatches = !normalized || `${event.rider.name} ${event.rider.plate}`.toLowerCase().includes(normalized)
-      return typeMatches && textMatches && new Date(event.createdAt).getTime() >= start
+      const eventDate = unitDateKey(event.createdAt)
+      const periodMatches = period === 'todos' || (period === 'hoje' ? eventDate === today : eventDate >= cutoff)
+      return typeMatches && textMatches && periodMatches
     })
   }, [events, filter, period, search])
 
