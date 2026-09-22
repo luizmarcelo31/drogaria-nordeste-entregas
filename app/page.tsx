@@ -12,6 +12,7 @@ type DashboardRider = Rider & { entry: string; tone: string; accessCount?: numbe
 
 export default function Page() {
   const [localRiders, setLocalRiders] = useState<DashboardRider[]>([])
+  const [accessEvents, setAccessEvents] = useState<AccessEvent[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [occurrence, setOccurrence] = useState<Occurrence | null>(null)
   const [stats, setStats] = useState({ entries: 0, exits: 0, blocked: 0 })
@@ -24,6 +25,7 @@ export default function Page() {
   async function loadDashboard() {
     try {
       const [events, databaseAlerts, riders, occurrences] = await Promise.all([listAccessEvents(), listAlerts(), listRiders(), listOccurrences()])
+      setAccessEvents(events)
       const today = new Date().toISOString().slice(0, 10)
       const todayEvents = events.filter((event) => event.createdAt.slice(0, 10) === today)
       setStats({ entries: todayEvents.filter((event) => event.type === 'entrada' && event.status === 'registrado').length, exits: todayEvents.filter((event) => event.type === 'saida' && event.status === 'registrado').length, blocked: riders.filter((rider) => rider.status === 'bloqueado').length })
@@ -35,7 +37,7 @@ export default function Page() {
 
   useEffect(() => { void loadDashboard() }, [])
   const filteredRiders = useMemo(() => localRiders.filter((rider) => `${rider.name} ${rider.plate}`.toLowerCase().includes(query.toLowerCase())), [localRiders, query])
-  const frequent = useMemo(() => { const counts = new Map<string, DashboardRider>(); localRiders.forEach((rider) => counts.set(rider.id, { ...rider, accessCount: (counts.get(rider.id)?.accessCount ?? 0) + 1 })); return [...counts.values()].sort((a, b) => (b.accessCount ?? 0) - (a.accessCount ?? 0)).slice(0, 3) }, [localRiders])
+  const frequent = useMemo(() => { const counts = new Map<string, DashboardRider>(); accessEvents.filter((event) => event.type === 'entrada' && event.status === 'registrado').forEach((event, index) => { const current = counts.get(event.riderId); counts.set(event.riderId, { id: event.rider.id, name: event.rider.name, cpf: event.rider.cpf, plate: event.rider.plate, phone: event.rider.phone, model: event.rider.model, color: event.rider.color, status: event.rider.status, documentExpiration: event.rider.documentExpiration, entry: '', tone: colors[index % colors.length], accessCount: (current?.accessCount ?? 0) + 1 }) }); return [...counts.values()].sort((a, b) => (b.accessCount ?? 0) - (a.accessCount ?? 0)).slice(0, 3) }, [accessEvents])
 
   async function registerCheckin() { if (!checkin.trim()) return; try { const rider = await findRider(checkin); if (!rider) { setError('Entregador não encontrado.'); return }; if (rider.status === 'bloqueado') await registerAccess(rider, 'entrada', 'bloqueado', 'Entregador bloqueado'); else if (!localRiders.some((item) => item.id === rider.id)) await registerAccess(rider, 'entrada'); setCheckin(''); await loadDashboard() } catch { setError('Não foi possível registrar a entrada.') } }
   async function checkout(rider: DashboardRider) { try { await registerAccess(rider, 'saida'); await loadDashboard() } catch { setError('Não foi possível registrar a saída.') } }
