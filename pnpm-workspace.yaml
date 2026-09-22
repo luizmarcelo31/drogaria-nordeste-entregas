@@ -1,5 +1,8 @@
 pmOnFail: ignore
 
+onlyBuiltDependencies:
+  - core-js
+
 minimumReleaseAgeExclude:
   - '@next/*'
   - next
