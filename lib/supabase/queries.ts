@@ -75,7 +75,7 @@ export async function findRider(identifier: string) {
     ? client.from('entregadores').select(riderFields).eq('cpf', digits).maybeSingle()
     : normalizedPlate.length === 7
       ? client.from('entregadores').select(riderFields).eq('placa', normalizedPlate).maybeSingle()
-      : client.from('entregadores').select(riderFields).ilike('nome', `%${value}%`).limit(1).maybeSingle()
+      : client.from('entregadores').select(riderFields).ilike('nome', `%${value}%`).order('nome').limit(1).maybeSingle()
   const { data, error } = await query
   if (error) throw error
   return data ? mapRider(data as Record<string, unknown>) : null
