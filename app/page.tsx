@@ -86,7 +86,7 @@ export default function Page() {
     <div className="min-h-screen bg-[#f7f8fa] text-slate-950">
       <aside className="route-fade fixed inset-y-0 left-0 z-30 hidden w-[250px] flex-col border-r border-slate-200 bg-white lg:flex">
         <div className="flex h-[92px] items-center gap-3 border-b border-slate-100 px-7">
-          <img src="/drogaria-nordeste-mark.svg" alt="Drogaria Nordeste" className="size-11 rounded-xl object-cover" />
+          <img src="/icon-192.png" alt="Drogaria Nordeste" className="size-11 rounded-xl object-cover" />
           <div><p className="text-[11px] font-bold tracking-[0.12em] text-[#c92228]">DROGARIA</p><p className="text-lg font-extrabold leading-5 tracking-tight">Nordeste</p></div>
         </div>
         <div className="px-4 pt-7"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Operação</p><nav className="flex flex-col gap-1">

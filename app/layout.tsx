@@ -27,16 +27,16 @@ export const metadata: Metadata = {
     icon: [
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
       {
-        url: '/drogaria-nordeste-mark.svg',
+        url: '/favicon-32x32.png',
         media: '(prefers-color-scheme: light)',
       },
       {
-        url: '/drogaria-nordeste-mark.svg',
+        url: '/favicon-32x32.png',
         media: '(prefers-color-scheme: dark)',
       },
       {
-        url: '/drogaria-nordeste-mark.svg',
-        type: 'image/svg+xml',
+        url: '/icon-512.png',
+        type: 'image/png',
       },
     ],
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
