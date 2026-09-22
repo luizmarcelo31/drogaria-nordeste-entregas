@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import { onlyDigits } from '@/lib/formatters'
+import { isValidCpf, isValidPlate, onlyDigits } from '@/lib/formatters'
 
 export type Rider = {
   id: string
@@ -82,12 +82,30 @@ export async function findRider(identifier: string) {
 }
 
 export async function createRider(input: { name: string; cpf: string; plate: string; phone: string }) {
+  const cpf = onlyDigits(input.cpf)
+  const plate = input.plate.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+  if (input.name.trim().length < 3) throw new Error('Informe o nome completo do entregador.')
+  if (!isValidCpf(cpf)) throw new Error('Informe um CPF válido.')
+  if (!isValidPlate(plate)) throw new Error('Informe uma placa válida com 7 caracteres.')
+  if (onlyDigits(input.phone).length < 10) throw new Error('Informe um telefone válido.')
   const { data, error } = await createClient().from('entregadores').insert({
     nome: input.name.trim(),
-    cpf: onlyDigits(input.cpf),
-    placa: input.plate.replace(/[^A-Za-z0-9]/g, '').toUpperCase(),
+    cpf,
+    placa: plate,
     telefone: input.phone.trim(),
   }).select(riderFields).single()
+  if (error) throw error
+  return mapRider(data as Record<string, unknown>)
+}
+
+export async function updateRider(id: string, input: { name: string; cpf: string; plate: string; phone: string }) {
+  const cpf = onlyDigits(input.cpf)
+  const plate = input.plate.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+  if (input.name.trim().length < 3) throw new Error('Informe o nome completo do entregador.')
+  if (!isValidCpf(cpf)) throw new Error('Informe um CPF válido.')
+  if (!isValidPlate(plate)) throw new Error('Informe uma placa válida com 7 caracteres.')
+  if (onlyDigits(input.phone).length < 10) throw new Error('Informe um telefone válido.')
+  const { data, error } = await createClient().from('entregadores').update({ nome: input.name.trim(), cpf, placa: plate, telefone: input.phone.trim() }).eq('id', id).select(riderFields).single()
   if (error) throw error
   return mapRider(data as Record<string, unknown>)
 }
@@ -101,7 +119,7 @@ export async function deactivateRider(id: string) {
   return updateRiderStatus(id, 'inativo')
 }
 
-export async function listAccessEvents(limit = 500) {
+export async function listAccessEvents(limit = 1000) {
   const { data, error } = await createClient().from('acessos').select(`id,entregador_id,tipo,status,motivo,created_at,entregadores (${riderFields})`).order('created_at', { ascending: false }).limit(limit)
   if (error) throw error
   return (data ?? []).flatMap((row) => {

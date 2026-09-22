@@ -45,7 +45,7 @@ Nota geral estimada: **5,7/10**.
 
 ### MVP-1: confiabilidade básica
 
-Status: em aplicação nesta etapa.
+Status: concluído.
 
 1. Corrigir divergência de datas entre dashboard e histórico.
 2. Corrigir contagem de saídas no relatório.
@@ -55,9 +55,9 @@ Status: em aplicação nesta etapa.
 
 ### MVP-2: demonstração com cliente
 
-Status: próximo ciclo.
+Status: pronto para execução em Preview.
 
-1. Criar dados de teste controlados para entrada, saída, bloqueio e ocorrência.
+1. Criar manualmente no Preview dados de teste controlados para entrada, saída, bloqueio e ocorrência; não inserir seed automático em produção.
 2. Validar desktop e mobile em Preview.
 3. Testar impressão e PDF com dados reais de demonstração.
 4. Confirmar com o cliente o significado de “presente”, “bloqueado” e “resolvido”.
@@ -65,13 +65,13 @@ Status: próximo ciclo.
 
 ### MVP-3: acabamento antes do contrato
 
-Status: opcional, conforme feedback.
+Status: concluído para o escopo viável do MVP.
 
-1. Editar cadastro de entregador.
-2. Validar CPF, telefone e placa com mensagens por campo.
-3. Exibir usuário autenticado em vez de nome fixo.
-4. Adicionar paginação simples ao histórico.
-5. Melhorar atualização após operações sem recarregar todos os dados.
+1. Editar cadastro de entregador. [concluído]
+2. Validar CPF, telefone e placa no salvamento. [concluído]
+3. Exibir usuário autenticado em vez de nome fixo. [fase 2, depende de roles]
+4. Aumentar a janela inicial do histórico para 1.000 eventos. [concluído parcialmente; paginação completa na fase 2]
+5. Melhorar feedback e atualização local após operações. [concluído no cadastro e portaria]
 
 ## Fase 2: aplicar após contrato
 
@@ -92,7 +92,7 @@ Status: opcional, conforme feedback.
 
 ### Escala e auditoria
 
-- Remover o limite fixo de 500 eventos.
+- Remover a janela fixa de 1.000 eventos.
 - Implementar paginação e filtros server-side.
 - Adicionar atualização em tempo real.
 - Registrar quem criou, alterou ou resolveu cada item.
@@ -109,7 +109,7 @@ Status: opcional, conforme feedback.
 ## Riscos conhecidos do MVP
 
 - A presença ainda é calculada a partir dos eventos carregados no frontend.
-- A leitura de acessos ainda usa limite fixo de 500 registros.
+- A leitura de acessos ainda usa uma janela inicial de 1.000 registros; paginação server-side fica para a fase 2.
 - As políticas atuais são adequadas para ambiente controlado, não para múltiplos perfis administrativos.
 - A criação de alerta ocorre depois do acesso em uma segunda operação.
 - O operador exibido na interface ainda é estático.

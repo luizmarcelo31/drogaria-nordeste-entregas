@@ -2,6 +2,23 @@ export function onlyDigits(value: string) {
   return value.replace(/\D/g, '')
 }
 
+export function isValidCpf(value: string) {
+  const digits = onlyDigits(value)
+  if (digits.length !== 11 || /^([0-9])\1+$/.test(digits)) return false
+  let sum = 0
+  for (let index = 0; index < 9; index += 1) sum += Number(digits[index]) * (10 - index)
+  let digit = (sum * 10) % 11
+  if (digit === 10) digit = 0
+  if (digit !== Number(digits[9])) return false
+  sum = 0
+  for (let index = 0; index < 10; index += 1) sum += Number(digits[index]) * (11 - index)
+  digit = (sum * 10) % 11
+  if (digit === 10) digit = 0
+  return digit === Number(digits[10])
+}
+
+export function isValidPlate(value: string) { return /^[A-Z0-9]{7}$/.test(value.replace(/[^A-Za-z0-9]/g, '').toUpperCase()) }
+
 export const UNIT_TIME_ZONE = 'America/Recife'
 
 export function unitDateKey(value: string | Date) {
