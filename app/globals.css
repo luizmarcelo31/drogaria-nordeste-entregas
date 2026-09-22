@@ -116,13 +116,15 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-.field { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: #f8fafc; padding: 0.75rem 0.9rem; font-size: 0.875rem; outline: none; }
+.field { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: #f8fafc; padding: 0.75rem 0.9rem; font-size: 0.875rem; line-height: 1.25rem; outline: none; }
 .field:focus { border-color: #c92228; background: white; box-shadow: 0 0 0 4px #fee2e2; }
 @keyframes page-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes route-fade { from { opacity: 0; } to { opacity: 1; } }
 .page-enter { animation: page-enter 360ms ease-out both; }
 .route-fade { animation: route-fade 220ms ease-out both; }
 .mobile-nav { animation: route-fade 260ms ease-out both; }
+.desktop-page { min-height: 100vh; min-width: 0; overflow-x: clip; }
+@media (min-width: 1024px) { .desktop-page { padding-left: 250px; } }
 main > .mobile-nav { display: none; }
 @media (max-width: 1023px) {
   body:has(.mobile-nav) main { padding-bottom: 6rem; }

@@ -2,10 +2,13 @@
 
 import { FormEvent, useEffect, useState } from 'react'
 import { ArrowRight, LockKeyhole, Loader2 } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { DesktopNav } from '@/components/desktop-nav'
 import { MobileNav } from '@/components/mobile-nav'
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
   const [sessionReady, setSessionReady] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
   const [email, setEmail] = useState('')
@@ -48,7 +51,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return <div className="flex min-h-screen items-center justify-center bg-[#f7f8fa]"><Loader2 className="animate-spin text-[#c92228]" size={24} /></div>
   }
 
-  if (authenticated) return <>{children}<MobileNav /></>
+  if (authenticated) return <>{pathname !== '/' && <DesktopNav />}<div className={pathname !== '/' ? 'desktop-page' : undefined}>{children}</div><MobileNav /></>
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa] px-5 py-10 text-slate-950">

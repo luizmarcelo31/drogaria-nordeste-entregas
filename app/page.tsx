@@ -2,13 +2,12 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, Bell, Bike, ClipboardList, CircleHelp, FileWarning, LayoutDashboard, LogOut, Search, ShieldAlert, UsersRound, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Bell, Bike, BookOpen, ClipboardList, CircleHelp, FileWarning, History, LayoutDashboard, LogOut, Search, ShieldAlert, UsersRound, X } from 'lucide-react'
 import { formatDocumentOrPlate } from '@/lib/formatters'
 import { createClient } from '@/lib/supabase/client'
 import { findRider, listAccessEvents, listAlerts, listOccurrences, listRiders, registerAccess, type AccessEvent, type Alert, type Occurrence, type Rider } from '@/lib/supabase/queries'
-import { MobileNav } from '@/components/mobile-nav'
 
-const routeMap = { Portaria: '/', Entregadores: '/entregadores', Ocorrências: '/ocorrencias', Relatórios: '/relatorios' }
+const routeMap = { Portaria: '/', Entregadores: '/entregadores', Ocorrências: '/ocorrencias', Relatórios: '/relatorios', Histórico: '/historico', Alertas: '/alertas', Manual: '/manual' }
 const colors = ['bg-sky-100 text-sky-700', 'bg-violet-100 text-violet-700', 'bg-amber-100 text-amber-700', 'bg-emerald-100 text-emerald-700']
 type DashboardRider = Rider & { entry: string; tone: string; accessCount?: number }
 type Operation = 'entrada' | 'saida'
@@ -107,10 +106,9 @@ export default function Page() {
         </div>
       </div>
     </main>
-    <MobileNav />
   </div>
 }
 
 function Brand() { return <div className="flex h-[92px] items-center gap-3 border-b border-slate-100 px-7"><img src="/icon-192.png" alt="Drogaria Nordeste" className="size-11 rounded-xl object-cover"/><div><p className="text-[11px] font-bold tracking-[0.12em] text-[#c92228]">DROGARIA</p><p className="text-lg font-extrabold leading-5 tracking-tight">Nordeste</p></div></div> }
-function iconFor(label: string) { return label === 'Portaria' ? <LayoutDashboard size={18}/> : label === 'Entregadores' ? <Bike size={18}/> : label === 'Ocorrências' ? <FileWarning size={18}/> : <ClipboardList size={18}/> }
+function iconFor(label: string) { return label === 'Portaria' ? <LayoutDashboard size={18}/> : label === 'Entregadores' ? <Bike size={18}/> : label === 'Ocorrências' ? <FileWarning size={18}/> : label === 'Histórico' ? <History size={18}/> : label === 'Alertas' ? <Bell size={18}/> : label === 'Manual' ? <BookOpen size={18}/> : <ClipboardList size={18}/> }
 function normalizeSearch(value: string) { return value.toLowerCase().replace(/[^a-z0-9]/g, '') }
