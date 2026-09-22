@@ -61,7 +61,7 @@ function mapRider(row: Record<string, unknown>): Rider {
 }
 
 export async function listRiders() {
-  const { data, error } = await createClient().from('entregadores').select(riderFields).order('nome')
+  const { data, error } = await createClient().from('entregadores').select(riderFields).neq('status', 'inativo').order('nome')
   if (error) throw error
   return (data ?? []).map((row) => mapRider(row as Record<string, unknown>))
 }
@@ -95,6 +95,10 @@ export async function createRider(input: { name: string; cpf: string; plate: str
 export async function updateRiderStatus(id: string, status: Rider['status']) {
   const { error } = await createClient().from('entregadores').update({ status }).eq('id', id)
   if (error) throw error
+}
+
+export async function deactivateRider(id: string) {
+  return updateRiderStatus(id, 'inativo')
 }
 
 export async function listAccessEvents(limit = 500) {

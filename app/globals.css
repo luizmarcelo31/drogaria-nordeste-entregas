@@ -130,9 +130,13 @@ main > .mobile-nav { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .page-enter, .route-fade, .mobile-nav { animation: none; } }
 @media print {
+  @page { size: A4; margin: 12mm; }
   button, a, nav, .no-print { display: none !important; }
   body { background: white !important; }
   .report-store-header { break-inside: avoid; }
+  table { width: 100% !important; border-collapse: collapse; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
 }
 
 @media (prefers-color-scheme: dark) {
