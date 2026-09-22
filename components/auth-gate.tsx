@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { ArrowRight, LockKeyhole, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { MobileNav } from '@/components/mobile-nav'
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [sessionReady, setSessionReady] = useState(false)
@@ -47,7 +48,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return <div className="flex min-h-screen items-center justify-center bg-[#f7f8fa]"><Loader2 className="animate-spin text-[#c92228]" size={24} /></div>
   }
 
-  if (authenticated) return <>{children}</>
+  if (authenticated) return <>{children}<MobileNav /></>
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa] px-5 py-10 text-slate-950">
