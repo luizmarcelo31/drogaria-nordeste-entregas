@@ -2,19 +2,112 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, Bell, Bike, BookOpen, ClipboardList, CircleHelp, FileWarning, History, LayoutDashboard, LogOut, Search, ShieldAlert, UsersRound, X } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Bell,
+  Bike,
+  BookOpen,
+  ClipboardList,
+  FileWarning,
+  History,
+  LayoutDashboard,
+  LogOut,
+  Search,
+  ShieldAlert,
+  UsersRound,
+  X,
+  Zap,
+} from 'lucide-react'
 import { formatDocumentOrPlate, unitDateKey } from '@/lib/formatters'
 import { createClient } from '@/lib/supabase/client'
-import { findRider, listAccessEvents, listAlerts, listOccurrences, listRiders, registerAccess, type AccessEvent, type Alert, type Occurrence, type Rider } from '@/lib/supabase/queries'
+import {
+  findRider,
+  listAccessEvents,
+  listAlerts,
+  listOccurrences,
+  listRiders,
+  registerAccess,
+  type AccessEvent,
+  type Alert,
+  type Occurrence,
+  type Rider,
+} from '@/lib/supabase/queries'
 
-const routeMap = { Portaria: '/', Entregadores: '/entregadores', Ocorrências: '/ocorrencias', Relatórios: '/relatorios', Histórico: '/historico', Alertas: '/alertas', Manual: '/manual' }
-const colors = ['bg-sky-100 text-sky-700', 'bg-violet-100 text-violet-700', 'bg-amber-100 text-amber-700', 'bg-emerald-100 text-emerald-700']
+const routeMap = {
+  Portaria: '/',
+  Entregadores: '/entregadores',
+  Ocorrências: '/ocorrencias',
+  Relatórios: '/relatorios',
+  Histórico: '/historico',
+  Alertas: '/alertas',
+  Manual: '/manual',
+}
+
+const tones = [
+  'bg-sky-100 text-sky-700',
+  'bg-violet-100 text-violet-700',
+  'bg-amber-100 text-amber-700',
+  'bg-emerald-100 text-emerald-700',
+]
+
 type DashboardRider = Rider & { entry: string; tone: string; accessCount?: number }
-type Operation = 'entrada' | 'saida'
 type Notice = { kind: 'success' | 'error'; message: string } | null
+type Variant = 'red' | 'green' | 'slate' | 'amber'
 
+const variantStyles: Record<Variant, string> = {
+  red: 'bg-red-50 text-[#c92228]',
+  green: 'bg-emerald-50 text-emerald-700',
+  slate: 'bg-slate-100 text-slate-500',
+  amber: 'bg-amber-50 text-amber-600',
+}
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+function StatCard({ icon: Icon, label, value, variant }: { icon: React.ElementType; label: string; value: string; variant: Variant }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <span className={`inline-flex size-8 items-center justify-center rounded-xl ${variantStyles[variant]}`}>
+        <Icon size={17} />
+      </span>
+      <p className="mt-3 text-2xl font-extrabold tracking-tight">{value}</p>
+      <p className="text-[11px] text-slate-400">{label}</p>
+    </div>
+  )
+}
+
+// ─── Brand ────────────────────────────────────────────────────────────────────
+function Brand() {
+  return (
+    <div className="flex h-[92px] items-center gap-3 border-b border-slate-100 px-7">
+      <img src="/icon-192.png" alt="Drogaria Nordeste" className="size-11 rounded-xl object-cover" />
+      <div>
+        <p className="text-[11px] font-bold tracking-[0.12em] text-[#c92228]">DROGARIA</p>
+        <p className="text-lg font-extrabold leading-5 tracking-tight">Nordeste</p>
+      </div>
+    </div>
+  )
+}
+
+function iconFor(label: string) {
+  if (label === 'Portaria') return <LayoutDashboard size={18} />
+  if (label === 'Entregadores') return <Bike size={18} />
+  if (label === 'Ocorrências') return <FileWarning size={18} />
+  if (label === 'Histórico') return <History size={18} />
+  if (label === 'Alertas') return <Bell size={18} />
+  if (label === 'Manual') return <BookOpen size={18} />
+  return <ClipboardList size={18} />
+}
+
+function initials(name: string) {
+  return name.split(' ').map((p) => p[0]).slice(0, 2).join('')
+}
+
+function normalizeSearch(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Page() {
-  const [operation, setOperation] = useState<Operation>('entrada')
   const [localRiders, setLocalRiders] = useState<DashboardRider[]>([])
   const [registeredRiders, setRegisteredRiders] = useState<Rider[]>([])
   const [accessEvents, setAccessEvents] = useState<AccessEvent[]>([])
@@ -27,88 +120,474 @@ export default function Page() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice>(null)
 
+  // ── Load ──────────────────────────────────────────────────────────────────
   async function loadDashboard() {
     try {
-      const [events, databaseAlerts, riders, occurrences] = await Promise.all([listAccessEvents(), listAlerts(), listRiders(), listOccurrences()])
+      const [events, databaseAlerts, riders, occurrences] = await Promise.all([
+        listAccessEvents(),
+        listAlerts(),
+        listRiders(),
+        listOccurrences(),
+      ])
       setAccessEvents(events)
       setRegisteredRiders(riders)
+
       const today = unitDateKey(new Date())
-      const todayEvents = events.filter((event) => unitDateKey(event.createdAt) === today)
-      setStats({ entries: todayEvents.filter((event) => event.type === 'entrada' && event.status === 'registrado').length, exits: todayEvents.filter((event) => event.type === 'saida' && event.status === 'registrado').length, blocked: riders.filter((rider) => rider.status === 'bloqueado').length })
+      const todayEvents = events.filter((e) => unitDateKey(e.createdAt) === today)
+      setStats({
+        entries: todayEvents.filter((e) => e.type === 'entrada' && e.status === 'registrado').length,
+        exits: todayEvents.filter((e) => e.type === 'saida' && e.status === 'registrado').length,
+        blocked: riders.filter((r) => r.status === 'bloqueado').length,
+      })
       setAlerts(databaseAlerts)
       setOccurrence(occurrences[0] ?? null)
+
       const latest = new Map<string, AccessEvent>()
-      events.forEach((event) => { if (!latest.has(event.riderId)) latest.set(event.riderId, event) })
-      setLocalRiders([...latest.values()].filter((event) => event.type === 'entrada' && event.status === 'registrado').map((event, index) => ({ ...event.rider, entry: new Date(event.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), tone: colors[index % colors.length] })))
-    } catch { setNotice({ kind: 'error', message: 'Não foi possível atualizar a portaria. Tente novamente.' }) } finally { setLoading(false) }
+      events.forEach((e) => { if (!latest.has(e.riderId)) latest.set(e.riderId, e) })
+      setLocalRiders(
+        [...latest.values()]
+          .filter((e) => e.type === 'entrada' && e.status === 'registrado')
+          .map((e, i) => ({
+            ...e.rider,
+            entry: new Date(e.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            tone: tones[i % tones.length],
+          })),
+      )
+    } catch {
+      setNotice({ kind: 'error', message: 'Não foi possível atualizar a portaria. Tente novamente.' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { void loadDashboard() }, [])
 
+  // ── Derived ───────────────────────────────────────────────────────────────
   const matches = useMemo(() => {
-    const source = operation === 'entrada' ? registeredRiders : localRiders
-    const normalized = normalizeSearch(search)
-    return source.filter((rider) => !normalized || normalizeSearch(`${rider.name} ${rider.plate} ${rider.cpf}`).includes(normalized)).slice(0, 8)
-  }, [localRiders, operation, registeredRiders, search])
+    const q = normalizeSearch(search)
+    return registeredRiders
+      .filter((r) => !q || normalizeSearch(`${r.name} ${r.plate} ${r.cpf}`).includes(q))
+      .slice(0, 8)
+  }, [registeredRiders, search])
 
   const frequent = useMemo(() => {
     const counts = new Map<string, DashboardRider>()
-    accessEvents.filter((event) => event.type === 'entrada' && event.status === 'registrado').forEach((event, index) => {
-      const current = counts.get(event.riderId)
-      counts.set(event.riderId, { ...event.rider, entry: '', tone: colors[index % colors.length], accessCount: (current?.accessCount ?? 0) + 1 })
-    })
-    return [...counts.values()].sort((a, b) => (b.accessCount ?? 0) - (a.accessCount ?? 0)).slice(0, 3)
+    accessEvents
+      .filter((e) => e.type === 'entrada' && e.status === 'registrado')
+      .forEach((e, i) => {
+        const cur = counts.get(e.riderId)
+        counts.set(e.riderId, {
+          ...e.rider,
+          entry: '',
+          tone: tones[i % tones.length],
+          accessCount: (cur?.accessCount ?? 0) + 1,
+        })
+      })
+    return [...counts.values()].sort((a, b) => (b.accessCount ?? 0) - (a.accessCount ?? 0)).slice(0, 5)
   }, [accessEvents])
 
-  async function runOperation(rider: Rider) {
+  // ── Actions ───────────────────────────────────────────────────────────────
+  async function registerEntry(rider: Rider) {
     setBusyId(rider.id)
     setNotice(null)
     try {
-      if (operation === 'entrada') {
-        if (rider.status === 'bloqueado') await registerAccess(rider, 'entrada', 'bloqueado', 'Entregador bloqueado')
-        else if (localRiders.some((item) => item.id === rider.id)) { setNotice({ kind: 'error', message: `${rider.name} já está marcado como presente.` }); return }
-        else await registerAccess(rider, 'entrada')
-        setNotice({ kind: 'success', message: `Entrada registrada para ${rider.name}.` })
+      if (rider.status === 'bloqueado') {
+        await registerAccess(rider, 'entrada', 'bloqueado', 'Entregador bloqueado')
+        setNotice({ kind: 'error', message: `${rider.name} está bloqueado — tentativa registrada.` })
+      } else if (localRiders.some((r) => r.id === rider.id)) {
+        setNotice({ kind: 'error', message: `${rider.name} já está no local.` })
+        return
       } else {
-        await registerAccess(rider, 'saida')
-        setNotice({ kind: 'success', message: `Saída registrada para ${rider.name}.` })
+        await registerAccess(rider, 'entrada')
+        setNotice({ kind: 'success', message: `Entrada confirmada — ${rider.name}.` })
       }
       setSearch('')
       await loadDashboard()
-    } catch { setNotice({ kind: 'error', message: `Não foi possível registrar a ${operation === 'entrada' ? 'entrada' : 'saída'}. Verifique sua conexão e tente novamente.` }) } finally { setBusyId(null) }
+    } catch {
+      setNotice({ kind: 'error', message: 'Não foi possível registrar a entrada. Tente novamente.' })
+    } finally { setBusyId(null) }
+  }
+
+  async function registerExit(rider: Rider) {
+    setBusyId(rider.id)
+    setNotice(null)
+    try {
+      await registerAccess(rider, 'saida')
+      setNotice({ kind: 'success', message: `Saída confirmada — ${rider.name}.` })
+      await loadDashboard()
+    } catch {
+      setNotice({ kind: 'error', message: 'Não foi possível registrar a saída. Tente novamente.' })
+    } finally { setBusyId(null) }
   }
 
   async function submitSearch() {
     if (!search.trim()) return
-    if (operation === 'saida') { if (matches[0]) await runOperation(matches[0]); return }
-    const rider = matches[0] ?? await findRider(search)
-    if (rider) await runOperation(rider)
+    const rider = matches[0] ?? (await findRider(search))
+    if (rider) await registerEntry(rider)
     else setNotice({ kind: 'error', message: 'Nenhum cadastro encontrado. Confira o nome, CPF ou placa.' })
   }
 
   async function signOut() { await createClient().auth.signOut() }
 
-  return <div className="min-h-screen bg-[#f7f8fa] text-slate-950">
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[250px] flex-col border-r border-slate-200 bg-white lg:flex">
-      <Brand />
-      <div className="px-4 pt-7"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Operação</p><nav className="flex flex-col gap-1">{Object.entries(routeMap).map(([label, href]) => <Link key={label} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold ${label === 'Portaria' ? 'bg-[#c92228] text-white' : 'text-slate-500 hover:bg-slate-50'}`}>{iconFor(label)} {label}</Link>)}</nav></div>
-      <div className="mt-auto p-4"><div className="rounded-2xl bg-[#fff4f3] p-4"><CircleHelp size={18} className="mb-3 text-[#c92228]"/><p className="text-xs font-bold">Precisa de ajuda?</p><Link href="/manual" className="mt-3 inline-block text-xs font-bold text-[#c92228]">Abrir manual</Link></div><button onClick={() => void signOut()} className="mt-4 flex w-full items-center gap-3 border-t border-slate-100 pt-4 text-left text-xs font-bold"><span className="flex size-9 items-center justify-center rounded-full bg-slate-900 text-white">AM</span><span className="flex-1">Ana Martins</span><LogOut size={16} className="text-slate-400"/></button></div>
-    </aside>
-    <main className="pb-24 lg:pb-0 lg:pl-[250px]">
-      <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur md:h-[76px] md:px-9"><div><p className="hidden text-xs font-medium text-slate-400 sm:block">Operação Drogaria Nordeste</p><h1 className="text-lg font-extrabold tracking-tight md:text-2xl">Portaria</h1></div><div className="relative"><button onClick={() => setShowAlerts((value) => !value)} aria-label={`Notificações${alerts.length ? `, ${alerts.length} pendentes` : ''}`} className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500"><Bell size={19}/>{alerts.length > 0 && <span className="absolute right-2 top-2 size-2 rounded-full bg-[#c92228] ring-2 ring-white"/>}</button>{showAlerts && <div className="absolute right-0 top-12 w-[min(310px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"><div className="flex justify-between px-2 pb-2"><p className="text-sm font-bold">Notificações</p><button onClick={() => setShowAlerts(false)} aria-label="Fechar notificações"><X size={15}/></button></div>{alerts.map((alert) => <div key={alert.id} className="border-t border-slate-100 px-2 py-3"><p className="text-xs font-bold">{alert.title}</p><p className="mt-1 text-[11px] text-slate-500">{alert.description}</p></div>)}</div>}</div></header>
-      <div className="mx-auto max-w-[1240px] px-4 py-5 md:px-9 md:py-8">
-        <div className="mb-5 flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#c92228]">Posto de controle</p><h2 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">Movimentação de hoje</h2><p className="mt-1 text-sm text-slate-500">Registre quem entra e quem sai da unidade.</p></div><Link href="/ocorrencias" aria-label="Abrir nova ocorrência" className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-red-200 hover:text-[#c92228] md:h-11 md:w-auto md:gap-2 md:px-4 md:text-sm md:font-bold"><FileWarning size={18}/><span className="hidden md:inline">Nova ocorrência</span></Link></div>
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6" aria-labelledby="operation-title"><div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><h3 id="operation-title" className="text-base font-extrabold">O que você quer registrar?</h3><p className="mt-1 text-xs text-slate-500">Escolha uma operação e busque o entregador.</p></div><div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1" role="group" aria-label="Tipo de movimentação"><button type="button" aria-pressed={operation === 'entrada'} onClick={() => { setOperation('entrada'); setSearch(''); setNotice(null) }} className={`flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-xs font-bold transition ${operation === 'entrada' ? 'bg-white text-[#c92228] shadow-sm' : 'text-slate-500'}`}><ArrowDownToLine size={16}/>Entrada</button><button type="button" aria-pressed={operation === 'saida'} onClick={() => { setOperation('saida'); setSearch(''); setNotice(null) }} className={`flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-xs font-bold transition ${operation === 'saida' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}><ArrowUpFromLine size={16}/>Saída</button></div></div><div className="mt-4 flex flex-col gap-2.5 sm:flex-row"><div className="relative min-w-0 flex-1"><label htmlFor="rider-search" className="sr-only">Buscar entregador por nome, CPF ou placa</label><Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/><input id="rider-search" value={search} onChange={(event) => setSearch(formatDocumentOrPlate(event.target.value))} onKeyDown={(event) => event.key === 'Enter' && void submitSearch()} placeholder={operation === 'entrada' ? 'Nome, CPF ou placa' : 'Buscar quem está no local'} autoComplete="off" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm outline-none transition focus:border-[#c92228] focus:bg-white focus:ring-4 focus:ring-red-100"/></div><button type="button" onClick={() => void submitSearch()} disabled={!search.trim() || loading || busyId !== null} className={`flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${operation === 'entrada' ? 'bg-[#c92228] hover:bg-[#a91d22]' : 'bg-slate-900 hover:bg-slate-700'}`}>{operation === 'entrada' ? <ArrowDownToLine size={17}/> : <ArrowUpFromLine size={17}/>}Registrar {operation}</button></div>{notice && <div role="status" aria-live="polite" className={`mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold ${notice.kind === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}><span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-current"/>{notice.message}</div>}{search.trim() && <div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white" role="listbox" aria-label="Resultados de entregadores">{matches.map((rider) => <div key={rider.id} className="flex items-center gap-3 px-3 py-3"><span className={`flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${colors[registeredRiders.findIndex((item) => item.id === rider.id) % colors.length]}`}>{rider.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold">{rider.name}</p><p className="text-[11px] text-slate-500">{rider.plate} · {rider.phone}</p></div>{operation === 'entrada' && rider.status === 'bloqueado' && <span className="text-[10px] font-bold text-red-600">Bloqueado</span>}<button type="button" onClick={() => void runOperation(rider)} disabled={busyId !== null} className={`min-h-10 shrink-0 rounded-lg px-3 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 ${operation === 'entrada' && rider.status === 'bloqueado' ? 'bg-red-700' : operation === 'entrada' ? 'bg-[#c92228]' : 'bg-slate-900'}`}>{busyId === rider.id ? 'Salvando...' : operation === 'entrada' && rider.status === 'bloqueado' ? 'Registrar tentativa' : operation === 'entrada' ? 'Dar entrada' : 'Dar saída'}</button></div>)}{matches.length === 0 && <p className="px-3 py-4 text-xs text-slate-500">{operation === 'saida' ? 'Ninguém presente corresponde à busca.' : 'Nenhum cadastro encontrado.'}</p>}</div>}</section>
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs"><span className="flex items-center gap-2 font-bold"><UsersRound size={15} className="text-[#c92228]"/>{localRiders.length} no local</span><span><strong>{stats.entries}</strong> entradas hoje</span><span><strong>{stats.exits}</strong> saídas hoje</span><span className="flex items-center gap-1 text-amber-700"><ShieldAlert size={14}/><strong>{stats.blocked}</strong> bloqueados</span></div>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="present-title"><div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 md:px-5"><div><h3 id="present-title" className="font-extrabold">No local agora <span className="ml-1 rounded-full bg-slate-100 px-2 py-1 text-[10px]">{localRiders.length}</span></h3><p className="mt-1 text-xs text-slate-500">Selecione “Saída” acima para registrar a retirada.</p></div></div>{loading ? <p className="p-8 text-center text-xs text-slate-500">Carregando presença...</p> : localRiders.length === 0 ? <div className="p-8 text-center"><UsersRound className="mx-auto text-slate-300" size={28}/><p className="mt-2 text-sm font-semibold text-slate-600">A unidade está vazia</p><p className="mt-1 text-xs text-slate-400">Use “Entrada” acima para registrar o primeiro entregador.</p></div> : <div className="divide-y divide-slate-100">{localRiders.map((rider) => <div key={rider.id} className="flex items-center gap-3 px-4 py-3 md:px-5"><span className={`flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${rider.tone}`}>{rider.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{rider.name}</p><p className="text-[11px] text-slate-400">{rider.plate} · entrou às {rider.entry}</p></div><button type="button" onClick={() => { setOperation('saida'); setSearch(rider.plate); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="min-h-10 shrink-0 rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-700 hover:border-slate-400">Preparar saída</button></div>)}</div>}</section>
-          <aside className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1"><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h3 className="font-extrabold">Mais frequentes</h3>{frequent.length === 0 ? <p className="mt-3 text-xs text-slate-400">Sem histórico de entradas.</p> : frequent.map((rider, index) => <div key={rider.id} className="mt-3 flex items-center gap-2.5"><span className="text-[10px] font-bold text-slate-400">0{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold">{rider.name}</p><p className="text-[10px] text-slate-400">{rider.accessCount} entradas</p></div></div>)}</section><section className="rounded-2xl border border-red-100 bg-[#fff9f8] p-4"><h3 className="flex items-center gap-2 font-extrabold"><ShieldAlert size={17} className="text-[#c92228]"/>Atenção</h3><p className="mt-2 text-sm font-bold">{stats.blocked} bloqueados</p><p className="mt-1 text-xs text-slate-500">{occurrence ? `Última ocorrência: ${occurrence.type}.` : 'Nenhuma ocorrência recente.'}</p></section></aside>
-        </div>
-      </div>
-    </main>
-  </div>
-}
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-[#f7f8fa] text-slate-950">
 
-function Brand() { return <div className="flex h-[92px] items-center gap-3 border-b border-slate-100 px-7"><img src="/icon-192.png" alt="Drogaria Nordeste" className="size-11 rounded-xl object-cover"/><div><p className="text-[11px] font-bold tracking-[0.12em] text-[#c92228]">DROGARIA</p><p className="text-lg font-extrabold leading-5 tracking-tight">Nordeste</p></div></div> }
-function iconFor(label: string) { return label === 'Portaria' ? <LayoutDashboard size={18}/> : label === 'Entregadores' ? <Bike size={18}/> : label === 'Ocorrências' ? <FileWarning size={18}/> : label === 'Histórico' ? <History size={18}/> : label === 'Alertas' ? <Bell size={18}/> : label === 'Manual' ? <BookOpen size={18}/> : <ClipboardList size={18}/> }
-function normalizeSearch(value: string) { return value.toLowerCase().replace(/[^a-z0-9]/g, '') }
+      {/* ── Desktop Sidebar ────────────────────────────────────────────── */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[250px] flex-col border-r border-slate-200 bg-white lg:flex">
+        <Brand />
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-7">
+          <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Operação</p>
+          <nav className="flex flex-col gap-1">
+            {Object.entries(routeMap).map(([label, href]) => (
+              <Link
+                key={label}
+                href={href}
+                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${
+                  label === 'Portaria' ? 'bg-[#c92228] text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                {iconFor(label)} {label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+        <div className="shrink-0 p-4">
+          <button
+            onClick={() => void signOut()}
+            className="flex min-h-11 w-full items-center gap-3 border-t border-slate-100 pt-4 text-left text-xs font-bold"
+          >
+            <span className="flex size-9 items-center justify-center rounded-full bg-slate-900 text-white">AM</span>
+            <span className="min-w-0 flex-1 truncate">Ana Martins</span>
+            <LogOut size={16} className="shrink-0 text-slate-400" />
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main ──────────────────────────────────────────────────────── */}
+      <main className="pb-24 lg:pb-0 lg:pl-[250px]">
+
+        {/* Header */}
+        <header className="sticky top-0 z-20 flex h-[64px] items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur md:px-9">
+          <div>
+            <p className="hidden text-[11px] font-medium text-slate-400 sm:block">Drogaria Nordeste</p>
+            <h1 className="text-lg font-extrabold tracking-tight">Portaria</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/ocorrencias"
+              className="hidden items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-amber-300 hover:text-amber-700 sm:flex"
+            >
+              <FileWarning size={15} />
+              Nova ocorrência
+            </Link>
+            <div className="relative">
+              <button
+                onClick={() => setShowAlerts((v) => !v)}
+                aria-label={`Notificações${alerts.length ? `, ${alerts.length} pendentes` : ''}`}
+                className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50"
+              >
+                <Bell size={19} />
+                {alerts.length > 0 && (
+                  <span className="absolute right-2 top-2 size-2 rounded-full bg-[#c92228] ring-2 ring-white" />
+                )}
+              </button>
+              {showAlerts && (
+                <div className="absolute right-0 top-12 z-50 w-[min(310px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                  <div className="flex justify-between px-2 pb-2">
+                    <p className="text-sm font-bold">Notificações</p>
+                    <button onClick={() => setShowAlerts(false)} aria-label="Fechar notificações"><X size={15} /></button>
+                  </div>
+                  {alerts.length === 0 && <p className="px-2 py-3 text-xs text-slate-400">Nenhuma notificação.</p>}
+                  {alerts.map((a) => (
+                    <div key={a.id} className="border-t border-slate-100 px-2 py-3">
+                      <p className="text-xs font-bold">{a.title}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">{a.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="mx-auto max-w-[1240px] px-4 py-5 md:px-9 md:py-6">
+
+          {/* ── Stat Cards ──────────────────────────────────────────────── */}
+          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard icon={UsersRound}      label="No local"      value={loading ? '—' : String(localRiders.length)} variant="red" />
+            <StatCard icon={ArrowDownToLine} label="Entradas hoje"  value={loading ? '—' : String(stats.entries)}      variant="green" />
+            <StatCard icon={ArrowUpFromLine} label="Saídas hoje"    value={loading ? '—' : String(stats.exits)}        variant="slate" />
+            <StatCard icon={ShieldAlert}     label="Bloqueados"     value={loading ? '—' : String(stats.blocked)}      variant={stats.blocked > 0 ? 'amber' : 'slate'} />
+          </div>
+
+          {/* ── Notice ──────────────────────────────────────────────────── */}
+          {notice && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`mb-4 flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold ${
+                notice.kind === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'
+              }`}
+            >
+              <span className="size-2 shrink-0 rounded-full bg-current" />
+              <span className="flex-1">{notice.message}</span>
+              <button onClick={() => setNotice(null)} className="opacity-50 hover:opacity-100" aria-label="Fechar aviso">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
+          {/* ── Grid principal ──────────────────────────────────────────── */}
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
+
+            {/* Coluna principal */}
+            <div className="flex flex-col gap-4">
+
+              {/* ENTRADA ──────────────────────────────────────────────── */}
+              <section
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5"
+                aria-labelledby="entry-title"
+              >
+                <div className="mb-3 flex items-center gap-2.5">
+                  <span className="flex size-7 items-center justify-center rounded-lg bg-[#c92228] text-white">
+                    <ArrowDownToLine size={14} />
+                  </span>
+                  <h2 id="entry-title" className="font-extrabold">Registrar entrada</h2>
+                </div>
+
+                {/* Busca */}
+                <div className="flex gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <label htmlFor="rider-search" className="sr-only">Buscar entregador por nome, CPF ou placa</label>
+                    <input
+                      id="rider-search"
+                      value={search}
+                      onChange={(e) => setSearch(formatDocumentOrPlate(e.target.value))}
+                      onKeyDown={(e) => e.key === 'Enter' && void submitSearch()}
+                      placeholder="Nome, CPF ou placa..."
+                      autoComplete="off"
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition focus:border-[#c92228] focus:bg-white focus:ring-4 focus:ring-red-100"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void submitSearch()}
+                    disabled={!search.trim() || busyId !== null}
+                    className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-[#c92228] px-4 text-sm font-bold text-white transition hover:bg-[#a91d22] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ArrowDownToLine size={15} />
+                    Entrar
+                  </button>
+                </div>
+
+                {/* Resultados da busca */}
+                {search.trim() && (
+                  <div
+                    className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white"
+                    role="listbox"
+                    aria-label="Entregadores encontrados"
+                  >
+                    {matches.map((rider) => (
+                      <div key={rider.id} className="flex items-center gap-3 border-b border-slate-50 px-3 py-2.5 last:border-0 hover:bg-slate-50">
+                        <span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${tones[registeredRiders.findIndex((r) => r.id === rider.id) % tones.length]}`}>
+                          {initials(rider.name)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold">{rider.name}</p>
+                          <p className="text-[11px] text-slate-400">{rider.plate} · {rider.phone}</p>
+                        </div>
+                        {rider.status === 'bloqueado' && (
+                          <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                            Bloqueado
+                          </span>
+                        )}
+                        {localRiders.some((r) => r.id === rider.id) && (
+                          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                            No local
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void registerEntry(rider)}
+                          disabled={busyId !== null}
+                          className={`shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-bold text-white transition disabled:opacity-50 ${
+                            rider.status === 'bloqueado' ? 'bg-red-700 hover:bg-red-800' : 'bg-[#c92228] hover:bg-[#a91d22]'
+                          }`}
+                        >
+                          {busyId === rider.id ? '...' : rider.status === 'bloqueado' ? 'Registrar' : 'Dar entrada'}
+                        </button>
+                      </div>
+                    ))}
+                    {matches.length === 0 && (
+                      <p className="px-3 py-4 text-xs text-slate-500">Nenhum cadastro encontrado.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Entrada rápida (frequentes) — visível quando busca está vazia */}
+                {!search.trim() && frequent.length > 0 && (
+                  <div className="mt-4 border-t border-slate-100 pt-4">
+                    <p className="mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                      <Zap size={11} />
+                      Entrada rápida
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {frequent.map((rider) => {
+                        const alreadyIn = localRiders.some((r) => r.id === rider.id)
+                        return (
+                          <button
+                            key={rider.id}
+                            type="button"
+                            onClick={() => void registerEntry(rider)}
+                            disabled={busyId !== null || alreadyIn}
+                            title={alreadyIn ? `${rider.name.split(' ')[0]} já está no local` : `Registrar entrada — ${rider.name}`}
+                            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                              alreadyIn
+                                ? 'border-emerald-100 bg-emerald-50 text-emerald-600 opacity-60 cursor-default'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-[#c92228] hover:bg-red-50 hover:text-[#c92228]'
+                            } disabled:cursor-not-allowed`}
+                          >
+                            <span className={`flex size-5 items-center justify-center rounded-full text-[9px] font-bold ${rider.tone}`}>
+                              {initials(rider.name)}
+                            </span>
+                            {rider.name.split(' ')[0]}
+                            <span className="font-normal text-slate-400">×{rider.accessCount}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* NO LOCAL AGORA ─────────────────────────────────────────── */}
+              <section
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                aria-labelledby="present-title"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5 md:px-5">
+                  <div className="flex items-center gap-2">
+                    <h2 id="present-title" className="font-extrabold">No local agora</h2>
+                    <span className="rounded-full bg-[#c92228] px-2 py-0.5 text-[10px] font-bold text-white">
+                      {localRiders.length}
+                    </span>
+                  </div>
+                  <Link
+                    href="/historico"
+                    className="text-[11px] font-bold text-[#c92228] hover:underline"
+                  >
+                    Ver histórico
+                  </Link>
+                </div>
+
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2.5 p-8 text-sm text-slate-400">
+                    <span className="size-4 animate-spin rounded-full border-2 border-slate-200 border-t-[#c92228]" />
+                    Carregando...
+                  </div>
+                ) : localRiders.length === 0 ? (
+                  <div className="px-5 py-10 text-center">
+                    <UsersRound className="mx-auto text-slate-200" size={36} />
+                    <p className="mt-3 text-sm font-bold text-slate-500">Nenhum entregador no local</p>
+                    <p className="mt-1 text-xs text-slate-400">Use o campo acima para registrar a primeira entrada.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {localRiders.map((rider) => (
+                      <div key={rider.id} className="flex items-center gap-3 px-4 py-3 md:px-5">
+                        <span className={`flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${rider.tone}`}>
+                          {initials(rider.name)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold">{rider.name}</p>
+                          <p className="text-[11px] text-slate-400">{rider.plate} · entrou {rider.entry}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void registerExit(rider)}
+                          disabled={busyId !== null}
+                          aria-label={`Registrar saída de ${rider.name}`}
+                          className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          {busyId === rider.id
+                            ? <span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                            : <ArrowUpFromLine size={13} />
+                          }
+                          Saída
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+
+            {/* Coluna lateral */}
+            <aside className="flex flex-col gap-4 sm:grid sm:grid-cols-2 lg:grid lg:grid-cols-1">
+
+              {/* Alerta de bloqueados / ocorrência */}
+              {(stats.blocked > 0 || occurrence) && (
+                <section className="rounded-2xl border border-red-100 bg-[#fff9f8] p-4">
+                  <h3 className="flex items-center gap-2 text-sm font-extrabold">
+                    <ShieldAlert size={15} className="text-[#c92228]" />
+                    Atenção
+                  </h3>
+                  {stats.blocked > 0 && (
+                    <p className="mt-2 text-xs text-slate-600">
+                      <span className="font-bold text-red-600">{stats.blocked}</span>
+                      {stats.blocked === 1 ? ' entregador bloqueado' : ' entregadores bloqueados'}
+                    </p>
+                  )}
+                  {occurrence && (
+                    <p className="mt-1 text-xs text-slate-500">Última: {occurrence.type}</p>
+                  )}
+                  <Link href="/ocorrencias" className="mt-3 block text-xs font-bold text-[#c92228] hover:underline">
+                    Ver ocorrências →
+                  </Link>
+                </section>
+              )}
+
+              {/* Atalho — Nova ocorrência */}
+              <Link
+                href="/ocorrencias"
+                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                  <FileWarning size={17} />
+                </span>
+                <div>
+                  <p className="text-sm font-extrabold">Nova ocorrência</p>
+                  <p className="text-[11px] text-slate-400">Registrar um fato</p>
+                </div>
+              </Link>
+
+              {/* Mais frequentes */}
+              {frequent.length > 0 && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <h3 className="mb-3 text-sm font-extrabold">Mais frequentes</h3>
+                  <div className="flex flex-col gap-3">
+                    {frequent.slice(0, 3).map((rider, i) => (
+                      <div key={rider.id} className="flex items-center gap-2.5">
+                        <span className="w-5 shrink-0 text-center text-[10px] font-bold text-slate-300">
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold">{rider.name}</p>
+                          <p className="text-[10px] text-slate-400">{rider.accessCount} entradas</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+            </aside>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
